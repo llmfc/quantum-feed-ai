@@ -1,48 +1,49 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
-function ErrorBoundary({ children }) {
-    const [hasError, setHasError] = useState(false);
-    useEffect(() => {
-        const resetError = () => {
-            setHasError(false);
-        };
-        if (hasError) {
-            resetError();
-        }
-    }, [hasError]);
-
-    if (hasError) {
-        return (
-            <div className=\"error-boundary\">
-                <h2>Something went wrong.</h2>
-                <button onClick={() => setHasError(false)}>Try again</button>
-            </div>
-        );
-    }
-
-    return children;
-}
-
 function App() {
     const [prompt, setPrompt] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
     const [llm, setLlm] = useState('OpenAI');
+    const [model, setModel] = useState('gpt-3.5-turbo'); // Default model
     const [temperature, setTemperature] = useState(0.7);
     const [sessionId, setSessionId] = useState(null);
     const [isStreaming, setIsStreaming] = useState(false);
     const [currentStreamedResponse, setCurrentStreamedResponse] = useState('');
     const chatHistoryRef = useRef(null);
-    const [isLoading, setIsLoading] = useState(false); // Added loading state
+    const [isLoading, setIsLoading] = useState(false);
+
+    const llmModels = {
+        'OpenAI': [
+            'gpt-3.5-turbo',
+            'gpt-4',
+            'gpt-4-turbo-preview'
+        ],
+        'Gemini': [
+            'gemini-pro',
+            'gemini-1.5-pro-latest'
+        ],
+        'Mistral': [
+            'mistral-tiny',
+            'mistral-small',
+            'mistral-medium'
+        ],
+        'O1': [
+            'oasst-sft-1-pythia-12b',
+            'oasst-sft-6-llama-30b'
+        ],
+        'LLama': [
+            'Llama-2-7b-chat-hf',
+            'Llama-2-13b-chat-hf'
+        ]
+    };
 
     useEffect(() => {
-        // Load chat history from localStorage on initial load
         const storedChatHistory = localStorage.getItem('chatHistory');
         if (storedChatHistory) {
             setChatHistory(JSON.parse(storedChatHistory));
         }
 
-        // Generate or retrieve session ID
         let session = localStorage.getItem('sessionId');
         if (!session) {
             session = generateSessionId();
@@ -52,7 +53,6 @@ function App() {
     }, []);
 
     useEffect(() => {
-        // Save chat history to localStorage whenever it changes
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
     }, [chatHistory]);
 
@@ -61,7 +61,14 @@ function App() {
     };
 
     const handleLlmChange = (event) => {
-        setLlm(event.target.value);
+        const selectedLlm = event.target.value;
+        setLlm(selectedLlm);
+        // Reset model to the first option when LLM changes
+        setModel(llmModels[selectedLlm][0]);
+    };
+
+    const handleModelChange = (event) => {
+        setModel(event.target.value);
     };
 
     const handleTemperatureChange = (event) => {
@@ -78,12 +85,13 @@ function App() {
         event.preventDefault();
 
         if (!prompt.trim()) {
-            return; // Prevent sending empty prompts
+            return;
         }
 
         setIsStreaming(true);
         setCurrentStreamedResponse('');
-        setIsLoading(true); // Start loading
+        setIsLoading(true);
+
         const newChatHistory = [...chatHistory, { type: 'user', text: prompt }];
         setChatHistory(newChatHistory);
 
@@ -93,15 +101,14 @@ function App() {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'text/event-stream',
-                    'Session-Id': sessionId, // Include session ID in header
+                    'Session-Id': sessionId,
                 },
-                body: JSON.stringify({ prompt: prompt, llm: llm, temperature: temperature }),
+                body: JSON.stringify({ prompt: prompt, llm: llm, temperature: temperature, model: model }),
                 credentials: 'omit',
             });
 
             if (!response.ok) {
-                // Handle HTTP errors
-                const errorData = await response.json(); // Try to parse JSON error
+                const errorData = await response.json();
                 throw new Error(errorData?.error || `HTTP error! Status: ${response.status}`);
             }
 
@@ -137,11 +144,10 @@ function App() {
                             if (parsedData.content) {
                                 setCurrentStreamedResponse((prev) => prev + parsedData.content);
                             } else if (parsedData.error) {
-                                // Handle errors from the backend
                                 console.error(\"Error from backend:\", parsedData.error);
                                 setChatHistory(prev => [...prev, { type: 'error', text: `Error: ${parsedData.error}` }]);
                                 setIsStreaming(false);
-                                reader.cancel(); // Stop reading stream on error
+                                reader.cancel();
                                 break;
                             }
                         } catch (parseError) {
@@ -156,10 +162,10 @@ function App() {
             setIsStreaming(false);
         } finally {
             setIsStreaming(false);
-            setIsLoading(false); // Stop loading
+            setIsLoading(false);
         }
 
-        setPrompt(''); // Clear the input after sending
+        setPrompt('');
     };
 
     useEffect(() => {
@@ -174,7 +180,7 @@ function App() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Session-Id': sessionId,  // Include session ID in header
+                    'Session-Id': sessionId,
                 },
                 credentials: 'omit',
             });
@@ -192,55 +198,74 @@ function App() {
 
     return (
         <div className=\"App\">
-            <h1>LLM Chat Application</h1>
-            <div className=\"controls\">
-                <div>
+            <h1 className=\"app-title\">LLM Chat Application</h1>
+            <div className=\"model-options\">
+                <div className=\"llm-selector\">
                     <label htmlFor=\"llm\">LLM:</label>
                     <select id=\"llm\" value={llm} onChange={handleLlmChange}>
-                        <option value=\"OpenAI\">OpenAI</option>
-                        <option value=\"Gemini\">Gemini</option>
+                        {Object.keys(llmModels).map((llmName) => (
+                            <option key={llmName} value={llmName}>{llmName}</option>
+                        ))}
                     </select>
                 </div>
-                <div>
-                    <label htmlFor=\"temperature\">Temperature:</label>
-                    <input
-                        type=\"range\"
-                        id=\"temperature\"
-                        min=\"0\"
-                        max=\"1\"
-                        step=\"0.01\"
-                        value={temperature}
-                        onChange={handleTemperatureChange}
-                    />
-                    <span>{temperature}</span>
+
+                <div className=\"model-selector\">
+                    <label htmlFor=\"model\">Model:</label>
+                    <select id=\"model\" value={model} onChange={handleModelChange}>
+                        {llmModels[llm].map((modelName) => (
+                            <option key={modelName} value={modelName}>{modelName}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
-            <div className=\"chat-history\" ref={chatHistoryRef}>
-                {chatHistory.map((message, index) => (
-                    <div key={index} className={`message ${message.type}`}>
-                        {message.text}
+
+            <div className=\"chat-container\">
+                <div className=\"chat-history\" ref={chatHistoryRef}>
+                    {chatHistory.map((message, index) => (
+                        <div key={index} className={`message ${message.type}`}>
+                            <div className=\"message-content\">
+                                {message.text}
+                            </div>
+                        </div>
+                    ))}
+                    {isStreaming && (
+                        <div className=\"message bot\">
+                            <div className=\"message-content\">
+                                {currentStreamedResponse}
+                            </div>
+                        </div>
+                    )}
+                    {isLoading && <div className=\"loading-spinner\">Loading...</div>}
+                </div>
+                <form onSubmit={handleSubmit} className=\"prompt-input\">
+                    <input
+                        type=\"text\"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder=\"Enter your prompt...\"
+                        disabled={isStreaming}
+                    />
+                    <button type=\"submit\" disabled={isStreaming || isLoading}>
+                        {isStreaming || isLoading ? 'Sending...' : 'Send'}
+                    </button>
+                </form>
+                <div className=\"controls\">
+                    <div className=\"temperature-control\">
+                        <label htmlFor=\"temperature\">Temperature:</label>
+                        <input
+                            type=\"range\"
+                            id=\"temperature\"
+                            min=\"0\"
+                            max=\"1\"
+                            step=\"0.01\"
+                            value={temperature}
+                            onChange={handleTemperatureChange}
+                        />
+                        <span>{temperature}</span>
                     </div>
-                ))}
-                {isStreaming && (
-                    <div className=\"message bot\">
-                        {currentStreamedResponse}
-                    </div>
-                )}
-                {isLoading && <div className=\"loading-spinner\">Loading...</div>} {/* Show loading spinner */}
+                    <button onClick={handleClearContext} className=\"new-chat-button\">New Chat</button>
+                </div>
             </div>
-            <form onSubmit={handleSubmit}>
-                <input
-                    type=\"text\"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder=\"Enter your prompt...\"
-                    disabled={isStreaming}
-                />
-                <button type=\"submit\" disabled={isStreaming || isLoading}>
-                    {isStreaming || isLoading ? 'Sending...' : 'Send'}
-                </button>
-            </form>
-            <button onClick={handleClearContext}>New Chat</button>
         </div>
     );
 }
