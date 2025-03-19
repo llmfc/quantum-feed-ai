@@ -1,0 +1,72 @@
+/* frontend/src/App.css */
+.App {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+
+.chat-history {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+  height: 300px;
+  overflow-y: scroll;
+  text-align: left;
+  position: relative; /* For positioning the loading spinner */
+}
+
+.message {
+  padding: 8px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+}
+
+.message.user {
+  background-color: #e2f0ff;
+  text-align: right;
+}
+
+.message.bot {
+  background-color: #f0f0f0;
+  text-align: left;
+}
+
+.message.error {
+    background-color: #ffdddd; /* Light red for error messages */
+    color: #8B0000; /* Dark red text */
+    text-align: left;
+}
+
+input[type=\"text\"] {
+  width: 70%;
+  padding: 8px;
+  margin-right: 10px;
+}
+
+button {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.controls > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Loading Spinner Styles */
+.loading-spinner {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-style: italic;
+    color: #888;
+}
