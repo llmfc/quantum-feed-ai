@@ -35,7 +35,7 @@ async def test_chat_endpoint_openai(client, mocker, mock_openai_response):
 
     response = client.post(
         '/chat',
-        json={'prompt': 'Test prompt', 'llm': 'OpenAI'},
+        json={'prompt': 'Test prompt', 'llm': 'OpenAI', 'model': 'gpt-3.5-turbo'},
         headers={'Session-Id': 'test_session'}
     )
 
@@ -58,7 +58,7 @@ async def test_chat_endpoint_openai(client, mocker, mock_openai_response):
 async def test_chat_endpoint_gemini_stub(client):
     response = client.post(
         '/chat',
-        json={'prompt': 'Test prompt', 'llm': 'Gemini'},
+        json={'prompt': 'Test prompt', 'llm': 'Gemini', 'model': 'gemini-pro'},
         headers={'Session-Id': 'test_session'}
     )
     assert response.status_code == 200
@@ -79,7 +79,7 @@ async def test_clear_context(client):
     # First, create some context
     client.post(
         '/chat',
-        json={'prompt': 'Test prompt', 'llm': 'OpenAI'},
+        json={'prompt': 'Test prompt', 'llm': 'OpenAI', 'model': 'gpt-3.5-turbo'},
         headers={'Session-Id': 'test_session'}
     )
     response = client.post('/clear_context', headers={'Session-Id': 'test_session'})
