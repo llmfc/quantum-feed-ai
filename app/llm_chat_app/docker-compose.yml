@@ -15,12 +15,3 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - \"5000:5000\"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}  # Replace with your actual API key
-      - GEMINI_API_KEY=${GEMINI_API_KEY}  # Replace with your actual API key, if used
-    volumes:
-      - backend_data:/app/data #This is optional, if you want persistant local storage
-volumes:
-  backend_data:
