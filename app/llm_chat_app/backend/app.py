@@ -31,26 +31,29 @@ class LLMProvider:
     def __init__(self, name):
         self.name = name
 
-    async def generate_response(self, prompt, context, temperature):
+    async def generate_response(self, prompt, context, temperature, model):
         raise NotImplementedError
 
 class OpenAIProvider(LLMProvider):
     def __init__(self):
         super().__init__(\"OpenAI\")
 
-    async def generate_response(self, prompt, context, temperature):
+    async def generate_response(self, prompt, context, temperature, model):
         try:
-            messages = [{\"role\": \"system\", \"content\": \"You are a helpful assistant.\"}]
+            messages = [{
+                \"role\": \"system\", 
+                \"content\": \"You are a helpful assistant.\"
+            }]
             # Include context in the messages
             for user_prompt, assistant_response in context:
                 messages.append({\"role\": \"user\", \"content\": user_prompt})
                 messages.append({\"role\": \"assistant\", \"content\": assistant_response})
             messages.append({\"role\": \"user\", \"content\": prompt})
 
-            logging.info(f\"Calling OpenAI API with prompt: {prompt}\")
+            logging.info(f\"Calling OpenAI API with prompt: {prompt}, model: {model}\")
 
             response = await openai.ChatCompletion.acreate(
-                model=\"gpt-3.5-turbo\",  # Or another model you prefer
+                model=model,  # Use selected model
                 messages=messages,
                 temperature=temperature,
                 stream=True
@@ -77,7 +80,7 @@ class GeminiProvider(LLMProvider):  # Stub Implementation
     def __init__(self):
         super().__init__(\"Gemini\")
 
-    async def generate_response(self, prompt, context, temperature):
+    async def generate_response(self, prompt, context, temperature, model):
         # Placeholder response
         await asyncio.sleep(1)  # Simulate some processing time
         return \"Gemini API Stub Response\"
@@ -95,6 +98,7 @@ async def chat():
     prompt = data.get(\"prompt\")
     llm_name = data.get(\"llm\", \"OpenAI\")  # Default to OpenAI
     temperature = data.get(\"temperature\", 0.7)  # Default temperature
+    model = data.get(\"model\", \"gpt-3.5-turbo\") # Default model
     session_id = request.headers.get(\"Session-Id\") # Get session id from header
 
     if not prompt:
@@ -120,27 +124,27 @@ async def chat():
         async def generate():
             nonlocal full_response
             try:
-                response = await llm.generate_response(prompt, context, temperature)
+                response = await llm.generate_response(prompt, context, temperature, model)
                 async for chunk in response:
                     if chunk and 'choices' in chunk and len(chunk['choices']) > 0 and 'delta' in chunk['choices'][0] and 'content' in chunk['choices'][0]['delta']:
                       chunk_message = chunk['choices'][0]['delta']['content']
                       full_response += chunk_message  # Accumulate the response
-                      yield f\"data: {json.dumps({'content': chunk_message})}\\\
-\\\
-\"
+                      yield f\"data: {json.dumps({'content': chunk_message})}\\\\\\
+\\\\\\
+\\\"\"
                     else:
                       #Handle edge case where the content is empty
                       pass
             except Exception as e:
                 error_message = str(e)
                 logging.error(f\"Error during generation: {error_message}\")
-                yield f\"data: {json.dumps({'error': error_message})}\\\
-\\\
-\"
+                yield f\"data: {json.dumps({'error': error_message})}\\\\\\
+\\\\\\
+\\\"\"
             finally:
-                yield \"data: [DONE]\\\
-\\\
-\"
+                yield \"data: [DONE]\\\\\\
+\\\\\\
+\\\"\"
 
         response =  Response(generate(), mimetype='text/event-stream')
         logging.info(f\"Response stream started for session {session_id}\")
